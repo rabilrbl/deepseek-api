@@ -1,7 +1,7 @@
 import requests
 
 
-def register(email, email_verification_code, password, cookies=None):
+def register(email, email_verification_code, password):
     """
     Register a new user
 
@@ -21,6 +21,7 @@ def register(email, email_verification_code, password, cookies=None):
     requests.Response
         Response object
     """
+    cookies = requests.get('https://coder.deepseek.com/').cookies
 
     headers = {
         'Accept-Language': 'en-IN,en;q=0.9',
@@ -57,7 +58,7 @@ def register(email, email_verification_code, password, cookies=None):
     return response.json()
 
 
-def create_email_verification_code(email: str, cookies:dict=None) -> dict:
+def create_email_verification_code(email: str) -> dict:
     """
     Create email verification code
 
@@ -73,7 +74,8 @@ def create_email_verification_code(email: str, cookies:dict=None) -> dict:
     requests.Response
         Response object
     """
-
+    cookies = requests.get('https://coder.deepseek.com/').cookies
+    
     headers = {
         'Accept-Language': 'en-IN,en;q=0.9',
         'Cache-Control': 'no-cache',
@@ -116,12 +118,10 @@ if __name__ == '__main__':
     email = input('Email: ')
     password = getpass.getpass('Password: ')
     
-    cookies = requests.get('https://coder.deepseek.com/').cookies
-    
-    response = create_email_verification_code(email, cookies=cookies)
+    response = create_email_verification_code(email)
     print(json.dumps(response, indent=4))
     
     email_verification_code = input('Email verification code: ')
     
-    response = register(email, email_verification_code, password, cookies=cookies)
+    response = register(email, email_verification_code, password)
     print(json.dumps(response, indent=4))

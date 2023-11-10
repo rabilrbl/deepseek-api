@@ -68,8 +68,9 @@ def get_token():
     login_json = get_user()
     return login_json["data"]["user"]["token"]
 
-def do_login(**kwargs):
-    return _login(**kwargs)
+def do_login(email, password):
+    cookies = requests.get('https://coder.deepseek.com/').cookies
+    return _login(email, password, cookies=cookies)
 
 if __name__ == '__main__':
     import sys
