@@ -68,6 +68,9 @@ def get_token():
     login_json = get_user()
     return login_json["data"]["user"]["token"]
 
+def do_login(**kwargs):
+    return _login(**kwargs)
+
 if __name__ == '__main__':
     import sys
     import getpass
