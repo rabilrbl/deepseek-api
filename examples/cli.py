@@ -12,6 +12,7 @@ def main():
         email=email,
         password=password,
         save_login=True, # save login credentials to login.json
+        model_class="deepseek_code" # Choose from "deepseek_code" or "deepseek_code"
     )
     
     print("""
@@ -20,6 +21,7 @@ def main():
             - Type 'exit' to exit.
             
           Start chatting!
+          \n\n
     """)
 
     while True:
@@ -39,6 +41,7 @@ def main():
                 print(chunk["choices"][0]["delta"]["content"], end="")
             except KeyError as ke:
                 print(ke)
+        print()
 
 
 if __name__ == "__main__":
