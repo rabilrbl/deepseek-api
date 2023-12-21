@@ -9,7 +9,7 @@ def read_requirements():
 
 setup(
     name='deepseek_api',
-    version='0.1.5',
+    version='0.1.6',
     packages=find_packages(),
     install_requires=read_requirements(),
     description='An unofficial Python API wrapper for chat.Deepseek.com',
