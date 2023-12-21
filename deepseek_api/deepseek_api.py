@@ -132,4 +132,6 @@ class DeepseekAPI:
                 if line:
                     line = line.strip().replace("data: ", "")
                     line = json.loads(line)
+                    if line["payload"] is None:  # Hack to fix initial empty payload
+                        line["choices"][0]["delta"]["content"] = ""
                     yield line
