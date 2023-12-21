@@ -20,7 +20,6 @@ def main():
             - Type 'exit' to exit.
             
           Start chatting!
-          \n\n
     """)
 
     while True:
