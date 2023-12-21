@@ -25,7 +25,6 @@ def main():
                 print(chunk["choices"][0]["delta"]["content"], end="")
             except KeyError as ke:
                 print(ke)
-                pass
 
 
 if __name__ == "__main__":
