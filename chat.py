@@ -42,6 +42,7 @@ def chat(
     json_data = {
         "message": message,
         "stream": True,
+        "model_class": "deepseek_code",
         "model_preference": None,
         "temperature": 0,
     }
