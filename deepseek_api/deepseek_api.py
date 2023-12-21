@@ -114,7 +114,7 @@ class DeepseekAPI:
         decoded_token = jwt.decode(token, options={"verify_signature": False})
         
         # Fetch the 'exp' value and subtract 1 day
-        exp_time = datetime.datetime.fromtimestamp(decoded_token['exp']) - datetime.timedelta(days=1)
+        exp_time = datetime.datetime.fromtimestamp(decoded_token['exp']) - datetime.timedelta(hours=1)
 
         # Calculate the time difference in seconds
         time_diff = (exp_time - datetime.datetime.now()).total_seconds()
