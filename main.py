@@ -11,7 +11,7 @@ def main():
     app = DeepseekAPI(
         email=email,
         password=password,
-        save_login=True,
+        save_login=True, # save login credentials to login.json
     )
 
     while True:
