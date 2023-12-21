@@ -1,2 +1,4 @@
 __pycache__
 login.json
+.env
+.venv
