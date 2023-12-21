@@ -1,4 +1,10 @@
 __pycache__
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+
 login.json
 .env
 .venv
