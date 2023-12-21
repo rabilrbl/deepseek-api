@@ -1,6 +1,6 @@
-# Deepseek coder API
+# Deepseek coder Reverse Engineered API Wrapper
 
-Unofficial API for Deepseek (chat.deepseek.com). This is a reverse-engineered API for the Deepseek coder and Deepseek code chatbots. This API is not affiliated with Deepseek in any way.
+Unofficial API Wrapper for Deepseek (chat.deepseek.com) in Python. This is a reverse-engineered API for the Deepseek coder and Deepseek code chatbots. This API is not affiliated with Deepseek in any way.
 
 ## Installation
 
