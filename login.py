@@ -95,4 +95,4 @@ if __name__ == '__main__':
     with open('login.json', 'w') as f:
         json.dump(response, f, indent=4)
         
-    print("Successfully generated login.json. Now you can use login function")
+    print("Successfully generated login.json. Now you can use chat function")
