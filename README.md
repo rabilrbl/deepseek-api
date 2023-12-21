@@ -1,6 +1,6 @@
 # Deepseek coder API
 
-Unofficial API for Deepseek (chat.deepseek.com)
+Unofficial API for Deepseek (chat.deepseek.com). This is a reverse-engineered API for the Deepseek coder and Deepseek code chatbots. This API is not affiliated with Deepseek in any way.
 
 ## Installation
 
@@ -56,3 +56,15 @@ while True:
             print("Error: ", ke)
     print()
 ```
+
+## License
+
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+## Disclaimer
+
+This project is not affiliated with Deepseek in any way. Use at your own risk. This project was created for educational purposes only.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
