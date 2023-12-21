@@ -13,9 +13,24 @@ def main():
         password=password,
         save_login=True, # save login credentials to login.json
     )
+    
+    print("""
+          Usage:
+            - Type 'new' to start a new chat.
+            - Type 'exit' to exit.
+            
+          Start chatting!
+          \n\n
+    """)
 
     while True:
         message = input("> ")
+        
+        if message == "exit":
+            break
+        elif message == "new":
+            app.new_chat()
+            continue
 
         response = app.chat(message)
 
