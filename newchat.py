@@ -35,12 +35,18 @@ def new_chat(token: str, cookies: dict = None) -> requests.Response:
     params = {
         "session_id": "1",
     }
+    
+    json_data = {
+        'model_class': 'deepseek_code',
+        'append_welcome_message': True,
+    }
 
     response = requests.post(
         "https://coder.deepseek.com/api/v0/chat/clear_context",
         params=params,
         cookies=cookies,
         headers=headers,
+        json=json_data,
     )
 
     return response.json()
@@ -51,6 +57,6 @@ if __name__ == "__main__":
     
     token = get_token()
     
-    response = new_chat(token, cookies=cookies)
+    response = new_chat(token)
     print(response)
     
