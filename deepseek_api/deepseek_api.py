@@ -1,5 +1,8 @@
 import requests
 import json
+import threading
+import jwt
+import datetime
 from deepseek_api.constants import API_URL
 from deepseek_api.errors import EmptyEmailOrPasswordError, NotLoggedInError
 
@@ -33,25 +36,16 @@ class DeepseekAPI:
         self.credentials = {}
         self.model_class = model_class
         self.save_login = save_login
-        self._login()
+        self.login()
         
     def __repr__(self):
         return f"DeepseekAPI(email={self.email}, password={self.password}, model_class={self.model_class}, save_login={self.save_login})"
     
     def __del__(self):
         self.session.close()
+        self._scheduled_token_object.cancel()
         
     def _login(self):
-        if self.save_login:
-            try:
-                with open("login.json", "r") as file:
-                    self.credentials = json.load(file)
-                    self.headers["authorization"] = "Bearer " + self.get_token()
-                    return self.credentials
-                
-            except FileNotFoundError:
-                pass
-            
         if self.email == "" or self.password == "":
             raise EmptyEmailOrPasswordError
         
@@ -71,6 +65,35 @@ class DeepseekAPI:
                 json.dump(self.credentials, file)
                 
         return response.json()
+    
+    def login(self):
+        if self.save_login:
+            try:
+                with open("login.json", "r") as file:
+                    self.credentials = json.load(file)
+                    self.headers["authorization"] = "Bearer " + self.get_token()
+            except FileNotFoundError:
+                self._login()
+        else:
+            self._login()
+        # schedule the update token function
+        self.__schedule_update_token()
+    
+    def __schedule_update_token(self) -> None:
+        # Decode the JWT token
+        token = self.get_token()
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
+        
+        # Fetch the 'exp' value and subtract 1 day
+        exp_time = datetime.datetime.fromtimestamp(decoded_token['exp']) - datetime.timedelta(days=1)
+
+        # Calculate the time difference in seconds
+        time_diff = (exp_time - datetime.datetime.now()).total_seconds()
+
+        # Schedule the execution
+        thread_timer_obj = threading.Timer(time_diff, self._login)
+        thread_timer_obj.start()
+        self._scheduled_token_object = thread_timer_obj
     
     def is_logged_in(self):
         if self.credentials:
