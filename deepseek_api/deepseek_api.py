@@ -18,7 +18,7 @@ class DeepseekAPI:
             email (str): Email of account from chat.deepseek.com
             password (str): Password of account from chat.deepseek.com
             model_class (str, optional): Deepseek model name "deepseek_chat" or "deepseek_code". Defaults to "deepseek_code".
-            save_login (bool, optional): Save credentials to login.json. This will prevent login function from being called multiple times in constructor. Defaults to False.
+            save_login (bool, optional): Save credentials to login.json. This will prevent login function from being called multiple times when constructor is invoked. Defaults to False.
         """
         self.email = email
         self.password = password
