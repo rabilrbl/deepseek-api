@@ -53,6 +53,6 @@ while True:
             # keep printing in one line
             print(chunk["choices"][0]["delta"]["content"], end="")
         except KeyError as ke:
-            print(ke)
+            print("Error: ", ke)
     print()
 ```
