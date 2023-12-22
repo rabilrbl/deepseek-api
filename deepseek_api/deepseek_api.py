@@ -8,11 +8,12 @@ import datetime
 from deepseek_api.constants import API_URL, DeepseekConstants
 from deepseek_api.errors import EmptyEmailOrPasswordError, NotLoggedInError
 
+
 class DeepseekBase:
     """
     A base class to create DeepseekAPI instances.
     """
-    
+
     def __init__(
         self,
         email: str,
@@ -64,7 +65,7 @@ class DeepseekBase:
             dict: Credentials JSON data from login response
         """
         return self.credentials
-    
+
     def _schedule_update_token(self):
         """Schedules a timer to refresh the JWT token before it expires.
 
@@ -87,7 +88,7 @@ class DeepseekBase:
             (exp_time - datetime.datetime.now()).total_seconds(), self._login
         )
         self._thread_timer.start()
-        
+
     def is_logged_in(self):
         """Check if user is logged in
 
@@ -98,7 +99,7 @@ class DeepseekBase:
             return True
         else:
             return False
-        
+
     def raise_for_not_logged_in(self):
         """Raise NotLoggedInError if user is not logged in
 
@@ -107,7 +108,7 @@ class DeepseekBase:
         """
         if not self.is_logged_in():
             raise NotLoggedInError
-    
+
 
 class DeepseekAPI(DeepseekBase):
     """
@@ -337,7 +338,6 @@ class SyncDeepseekAPI(DeepseekBase):
             self._login()
         # Schedule a callback to update the token periodically
         self._schedule_update_token()
-
 
     def new_chat(self):
         """Start a new chat synchronously"""
