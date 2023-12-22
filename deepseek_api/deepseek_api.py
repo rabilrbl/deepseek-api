@@ -12,36 +12,40 @@ class DeepseekAPI:
     """
     
     def __init__(self, email: str, password: str, model_class: str = "deepseek_code", save_login: bool = False):
-        """Constructor method
+        """
+        Constructor method for DeepseekAPI class.
 
-        Args:
-            email (str): Email of account from chat.deepseek.com
-            password (str): Password of account from chat.deepseek.com
-            model_class (str, optional): Deepseek model name "deepseek_chat" or "deepseek_code". Defaults to "deepseek_code".
-            save_login (bool, optional): Save credentials to login.json. This will prevent login function from being called multiple times when constructor is invoked. Defaults to False.
+        Initializes a DeepseekAPI instance with provided credentials and settings.
+
+        Parameters:
+        email (str): User's email for Deepseek account
+        password (str): Password for user's Deepseek account
+        model_class (str): Deepseek model to use, either 'deepseek_chat' or 'deepseek_code'
+        save_login (bool): Whether to save credentials to login.json to avoid re-login
+
         """
         self.email = email
         self.password = password
         self.session = requests.Session()
-        self.cookies = self.session.get('https://coder.deepseek.com/').cookies
+        self.cookies = self.session.get("https://coder.deepseek.com/").cookies
         self.headers = {
-            'Accept-Language': 'en-IN,en;q=0.9',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'DNT': '1',
-            'Origin': 'https://coder.deepseek.com',
-            'Pragma': 'no-cache',
-            'Referer': 'https://coder.deepseek.com/sign_in',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-origin',
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome',
-            'accept': '*/*',
-            'content-type': 'application/json',
-            'sec-ch-ua': '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Linux"',
-            'x-app-version': '20231220.2',
+            "Accept-Language": "en-IN,en;q=0.9",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "DNT": "1",
+            "Origin": "https://coder.deepseek.com",
+            "Pragma": "no-cache",
+            "Referer": "https://coder.deepseek.com/sign_in",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome",
+            "accept": "*/*",
+            "content-type": "application/json",
+            "sec-ch-ua": '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Linux"',
+            "x-app-version": "20231220.2",
         }
         self.credentials = {}
         self.model_class = model_class
