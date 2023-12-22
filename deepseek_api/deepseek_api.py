@@ -7,13 +7,20 @@ import jwt
 import datetime
 from deepseek_api.constants import API_URL
 from deepseek_api.errors import EmptyEmailOrPasswordError, NotLoggedInError
-                    
+
+
 class DeepseekAPI:
     """
     An asynchronous class to interact with the Deepseek API.
     """
 
-    def __init__(self, email: str, password: str, model_class: str = "deepseek_code", save_login: bool = False):
+    def __init__(
+        self,
+        email: str,
+        password: str,
+        model_class: str = "deepseek_code",
+        save_login: bool = False,
+    ):
         """
         Constructor method for DeepseekAPI class.
 
@@ -52,7 +59,7 @@ class DeepseekAPI:
 
         self.credentials = {}
         self.session = None  # Initialized in the async context manager
-        self._thread_timer = None # Initialized in the _schedule_update_token method
+        self._thread_timer = None  # Initialized in the _schedule_update_token method
 
     async def __aenter__(self):
         """Initializes an aiohttp ClientSession and logs in.
@@ -108,9 +115,8 @@ class DeepseekAPI:
                 async with aiofiles.open("login.json", "w") as file:
                     await file.write(json.dumps(self.credentials))
 
-
             return await response.json()
-        
+
     async def login(self):
         """Logs the user in by loading credentials from file or calling login API.
 
@@ -134,7 +140,7 @@ class DeepseekAPI:
             await self._login()
         # Schedule a callback to update the token periodically
         self._schedule_update_token()
-        
+
     def _schedule_update_token(self):
         """Schedules a timer to refresh the JWT token before it expires.
 
@@ -157,7 +163,7 @@ class DeepseekAPI:
             (exp_time - datetime.datetime.now()).total_seconds(), self._login
         )
         self._thread_timer.start()
-        
+
     async def is_logged_in(self):
         """Check if user is logged in
 
@@ -168,7 +174,7 @@ class DeepseekAPI:
             return True
         else:
             return False
-        
+
     async def raise_for_not_logged_in(self):
         """Raise NotLoggedInError if user is not logged in
 
@@ -177,11 +183,11 @@ class DeepseekAPI:
         """
         if not await self.is_logged_in():
             raise NotLoggedInError
-        
+
     def set_authorization_header(self):
         """Sets the authorization header to a JWT token.
-        
-        Gets the JWT token by calling get_token() and prepends 'Bearer ' 
+
+        Gets the JWT token by calling get_token() and prepends 'Bearer '
         to set the authorization header.
         """
         self.headers["authorization"] = "Bearer " + self.get_token()
@@ -193,7 +199,7 @@ class DeepseekAPI:
             str: JWT Authorization token
         """
         return self.get_credentials()["data"]["user"]["token"]
-    
+
     def get_credentials(self):
         """Get credentials
 
@@ -204,24 +210,20 @@ class DeepseekAPI:
 
     async def new_chat(self):
         """Start a new chat asynchronously"""
-        
+
         params = {
             "session_id": "1",
         }
-        
+
         json_data = {
-            'model_class': self.model_class,
-            'append_welcome_message': False,
+            "model_class": self.model_class,
+            "append_welcome_message": False,
         }
-        
+
         async with self.session.post(
-            API_URL.CLEAR_CONTEXT,
-            params=params,
-            headers=self.headers,
-            json=json_data
+            API_URL.CLEAR_CONTEXT, params=params, headers=self.headers, json=json_data
         ) as response:
             return await response.json()
-
 
     async def chat(self, message: str):
         """Chat asynchronously with the Deepseek API.
@@ -264,7 +266,13 @@ class SyncDeepseekAPI:
     A synchronous class to interact with the Deepseek API.
     """
 
-    def __init__(self, email: str, password: str, model_class: str = "deepseek_code", save_login: bool = False):
+    def __init__(
+        self,
+        email: str,
+        password: str,
+        model_class: str = "deepseek_code",
+        save_login: bool = False,
+    ):
         """
         Constructor method for DeepseekAPI class.
 
@@ -300,32 +308,35 @@ class SyncDeepseekAPI:
             "sec-ch-ua-platform": '"Linux"',
             "x-app-version": "20231220.2",
         }
-
         self.credentials = {}
-        self._thread_timer = None # Initialized in the _schedule_update_token method
+        self._thread_timer = None  # Initialized in the _schedule_update_token method
         self.session = requests.Session()
         self.login()
-    
+
     def __del__(self):
         """Destructor method for DeepseekAPI class.
 
         Closes the requests Session that was used for making requests to the API.
         """
         self.session.close()
-        if self._thread_timer:
+        if self._thread_timer is not None:
             self._thread_timer.cancel()
-        
+
+    def close(self):
+        """Call destructor method"""
+        self.__del__()
+
     def _login(self):
         """Logs in the user by sending a POST request to the login API endpoint.
 
         Sends the login request with email, password and other required fields.
         Saves the credentials to a file if save_login is True.
         Returns the JSON response from the API.
-        
+
         Raises:
             EmptyEmailOrPasswordError: If the email or password is not provided.
             requests.exceptions.RequestException: If the login request fails.
-            
+
         Returns:
             dict: Credentials JSON data from login response
         """
@@ -350,7 +361,7 @@ class SyncDeepseekAPI:
                 file.write(json.dumps(self.credentials))
 
         return response.json()
-    
+
     def login(self):
         """Logs the user in by loading credentials from file or calling login API.
 
@@ -374,7 +385,7 @@ class SyncDeepseekAPI:
             self._login()
         # Schedule a callback to update the token periodically
         self._schedule_update_token()
-        
+
     def _schedule_update_token(self):
         """Schedules a timer to refresh the JWT token before it expires.
 
@@ -397,8 +408,7 @@ class SyncDeepseekAPI:
             (exp_time - datetime.datetime.now()).total_seconds(), self._login
         )
         self._thread_timer.start()
-        
-            
+
     def is_logged_in(self):
         """Check if user is logged in
 
@@ -409,7 +419,7 @@ class SyncDeepseekAPI:
             return True
         else:
             return False
-        
+
     def raise_for_not_logged_in(self):
         """Raise NotLoggedInError if user is not logged in
 
@@ -418,15 +428,15 @@ class SyncDeepseekAPI:
         """
         if not self.is_logged_in():
             raise NotLoggedInError
-        
+
     def set_authorization_header(self):
         """Sets the authorization header to a JWT token.
-        
-        Gets the JWT token by calling get_token() and prepends 'Bearer ' 
+
+        Gets the JWT token by calling get_token() and prepends 'Bearer '
         to set the authorization header.
         """
         self.headers["authorization"] = "Bearer " + self.get_token()
-        
+
     def get_token(self):
         """Get token
 
@@ -434,7 +444,7 @@ class SyncDeepseekAPI:
             str: JWT Authorization token
         """
         return self.get_credentials()["data"]["user"]["token"]
-    
+
     def get_credentials(self):
         """Get credentials
 
@@ -442,27 +452,24 @@ class SyncDeepseekAPI:
             dict: Credentials JSON data from login response
         """
         return self.credentials
-    
+
     def new_chat(self):
         """Start a new chat synchronously"""
-        
+
         params = {
             "session_id": "1",
         }
-        
+
         json_data = {
-            'model_class': self.model_class,
-            'append_welcome_message': False,
+            "model_class": self.model_class,
+            "append_welcome_message": False,
         }
-        
+
         response = self.session.post(
-            API_URL.CLEAR_CONTEXT,
-            params=params,
-            headers=self.headers,
-            json=json_data
+            API_URL.CLEAR_CONTEXT, params=params, headers=self.headers, json=json_data
         )
         return response.json()
-    
+
     def chat(self, message: str):
         """Chat synchronously with the Deepseek API.
 
@@ -483,18 +490,19 @@ class SyncDeepseekAPI:
             "temperature": 0,
         }
 
-        response = self.session.post(
-            API_URL.CHAT, headers=self.headers, json=json_data
-        )
-        # Check if the request was successful (status code 200)
-        response.raise_for_status()
+        with self.session.post(
+            API_URL.CHAT, headers=self.headers, json=json_data, stream=True
+        ) as response:
+            # Check if the request was successful (status code 200)
+            response.raise_for_status()
 
-        # Iterate over the content asynchronously
-        for data in response.iter_content():
-            line = data.decode().strip().replace("data: ", "")
-            if line:
-                line = json.loads(line)
-                if line.get("payload", None) is None:
-                    line["choices"][0]["delta"]["content"] = ""
-                yield line
-                
+            # Iterate over the content in chunks
+            for line in response.iter_lines(decode_unicode=True):
+                if line:
+                    line = line.strip().replace("data: ", "")
+                    line: dict = json.loads(line)
+                    if (
+                        line.get("payload", None) is None
+                    ):  # Hack to fix initial empty payload
+                        line["choices"][0]["delta"]["content"] = ""
+                    yield line

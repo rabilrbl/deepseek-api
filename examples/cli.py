@@ -5,28 +5,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 async def main():
     email = os.environ.get("DEEPSEEK_EMAIL")
     password = os.environ.get("DEEPSEEK_PASSWORD")
-    
+
     async with DeepseekAPI(
         email=email,
         password=password,
-        save_login=True, # save login credentials to login.json
-        model_class="deepseek_code" # Choose from "deepseek_code" or "deepseek_code"
+        save_login=True,  # save login credentials to login.json
+        model_class="deepseek_code",  # Choose from "deepseek_code" or "deepseek_code"
     ) as app:
-    
-        print("""
+        print(
+            """
             Usage:
                 - Type 'new' to start a new chat.
                 - Type 'exit' to exit.
                 
             Start chatting!
-        """)
+        """
+        )
 
         while True:
             message = input("> ")
-            
+
             if message == "exit":
                 break
             elif message == "new":
