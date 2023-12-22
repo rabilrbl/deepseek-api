@@ -2,7 +2,6 @@ import requests
 import aiohttp
 import aiofiles
 import json
-import threading
 import jwt
 import datetime
 from deepseek_api.constants import API_URL
