@@ -8,12 +8,11 @@ import datetime
 from deepseek_api.constants import API_URL
 from deepseek_api.errors import EmptyEmailOrPasswordError, NotLoggedInError
 
-
-class DeepseekAPI:
+class DeepseekBase:
     """
-    An asynchronous class to interact with the Deepseek API.
+    A base class to create DeepseekAPI instances.
     """
-
+    
     def __init__(
         self,
         email: str,
@@ -56,10 +55,82 @@ class DeepseekAPI:
             "sec-ch-ua-platform": '"Linux"',
             "x-app-version": "20231220.2",
         }
-
         self.credentials = {}
-        self.session = None  # Initialized in the async context manager
         self._thread_timer = None  # Initialized in the _schedule_update_token method
+        self.session = None  # Initialized in the async context manager
+
+    def set_authorization_header(self):
+        """Sets the authorization header to a JWT token.
+
+        Gets the JWT token by calling get_token() and prepends 'Bearer '
+        to set the authorization header.
+        """
+        self.headers["authorization"] = "Bearer " + self.get_token()
+
+    def get_token(self):
+        """Get token
+
+        Returns:
+            str: JWT Authorization token
+        """
+        return self.get_credentials()["data"]["user"]["token"]
+
+    def get_credentials(self):
+        """Get credentials
+
+        Returns:
+            dict: Credentials JSON data from login response
+        """
+        return self.credentials
+    
+    def _schedule_update_token(self):
+        """Schedules a timer to refresh the JWT token before it expires.
+
+        Decodes the current JWT token to get the 'exp' expiration time.
+        Subtracts 1 hour from the 'exp' time to refresh the token early.
+        Starts a Timer thread to call the _login() method when the expiration
+        time is reached. This will refresh the token and update the authorization
+        header with the new token.
+        """
+        # Decode the JWT token
+        token = self.get_token()
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
+
+        # Fetch the 'exp' value and subtract 1 hour (to be safe)
+        exp_time = datetime.datetime.fromtimestamp(
+            decoded_token["exp"]
+        ) - datetime.timedelta(hours=1)
+
+        self._thread_timer = threading.Timer(
+            (exp_time - datetime.datetime.now()).total_seconds(), self._login
+        )
+        self._thread_timer.start()
+        
+    def is_logged_in(self):
+        """Check if user is logged in
+
+        Returns:
+            bool: True if logged in, False otherwise
+        """
+        if self.credentials:
+            return True
+        else:
+            return False
+        
+    def raise_for_not_logged_in(self):
+        """Raise NotLoggedInError if user is not logged in
+
+        Raises:
+            NotLoggedInError: If user is not logged in
+        """
+        if not self.is_logged_in():
+            raise NotLoggedInError
+    
+
+class DeepseekAPI(DeepseekBase):
+    """
+    An asynchronous class to interact with the Deepseek API.
+    """
 
     async def __aenter__(self):
         """Initializes an aiohttp ClientSession and logs in.
@@ -141,73 +212,6 @@ class DeepseekAPI:
         # Schedule a callback to update the token periodically
         self._schedule_update_token()
 
-    def _schedule_update_token(self):
-        """Schedules a timer to refresh the JWT token before it expires.
-
-        Decodes the current JWT token to get the 'exp' expiration time.
-        Subtracts 1 hour from the 'exp' time to refresh the token early.
-        Starts a Timer thread to call the _login() method when the expiration
-        time is reached. This will refresh the token and update the authorization
-        header with the new token.
-        """
-        # Decode the JWT token
-        token = self.get_token()
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-
-        # Fetch the 'exp' value and subtract 1 hour (to be safe)
-        exp_time = datetime.datetime.fromtimestamp(
-            decoded_token["exp"]
-        ) - datetime.timedelta(hours=1)
-
-        self._thread_timer = threading.Timer(
-            (exp_time - datetime.datetime.now()).total_seconds(), self._login
-        )
-        self._thread_timer.start()
-
-    async def is_logged_in(self):
-        """Check if user is logged in
-
-        Returns:
-            bool: True if logged in, False otherwise
-        """
-        if self.credentials:
-            return True
-        else:
-            return False
-
-    async def raise_for_not_logged_in(self):
-        """Raise NotLoggedInError if user is not logged in
-
-        Raises:
-            NotLoggedInError: If user is not logged in
-        """
-        if not await self.is_logged_in():
-            raise NotLoggedInError
-
-    def set_authorization_header(self):
-        """Sets the authorization header to a JWT token.
-
-        Gets the JWT token by calling get_token() and prepends 'Bearer '
-        to set the authorization header.
-        """
-        self.headers["authorization"] = "Bearer " + self.get_token()
-
-    def get_token(self):
-        """Get token
-
-        Returns:
-            str: JWT Authorization token
-        """
-        return self.get_credentials()["data"]["user"]["token"]
-
-    def get_credentials(self):
-        """Get credentials
-
-        Returns:
-            dict: Credentials JSON data from login response
-        """
-        return self.credentials
-
     async def new_chat(self):
         """Start a new chat asynchronously"""
 
@@ -261,7 +265,7 @@ class DeepseekAPI:
                     yield line
 
 
-class SyncDeepseekAPI:
+class SyncDeepseekAPI(DeepseekBase):
     """
     A synchronous class to interact with the Deepseek API.
     """
@@ -272,44 +276,10 @@ class SyncDeepseekAPI:
         password: str,
         model_class: str = "deepseek_code",
         save_login: bool = False,
+        *args,
+        **kwargs,
     ):
-        """
-        Constructor method for DeepseekAPI class.
-
-        Initializes a DeepseekAPI instance with provided credentials and settings.
-
-        Parameters:
-        email (str): User's email for Deepseek account
-        password (str): Password for user's Deepseek account
-        model_class (str): Deepseek model to use, either 'deepseek_chat' or 'deepseek_code'
-        save_login (bool): Whether to save credentials to login.json to avoid re-login
-
-        """
-        self.email = email
-        self.password = password
-        self.model_class = model_class
-        self.save_login = save_login
-        self.headers = {
-            "Accept-Language": "en-IN,en;q=0.9",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "DNT": "1",
-            "Origin": "https://coder.deepseek.com",
-            "Pragma": "no-cache",
-            "Referer": "https://coder.deepseek.com/",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome",
-            "accept": "*/*",
-            "content-type": "application/json",
-            "sec-ch-ua": '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Linux"',
-            "x-app-version": "20231220.2",
-        }
-        self.credentials = {}
-        self._thread_timer = None  # Initialized in the _schedule_update_token method
+        super().__init__(email, password, model_class, save_login, *args, **kwargs)
         self.session = requests.Session()
         self.login()
 
@@ -386,72 +356,6 @@ class SyncDeepseekAPI:
         # Schedule a callback to update the token periodically
         self._schedule_update_token()
 
-    def _schedule_update_token(self):
-        """Schedules a timer to refresh the JWT token before it expires.
-
-        Decodes the current JWT token to get the 'exp' expiration time.
-        Subtracts 1 hour from the 'exp' time to refresh the token early.
-        Starts a Timer thread to call the _login() method when the expiration
-        time is reached. This will refresh the token and update the authorization
-        header with the new token.
-        """
-        # Decode the JWT token
-        token = self.get_token()
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-
-        # Fetch the 'exp' value and subtract 1 hour (to be safe)
-        exp_time = datetime.datetime.fromtimestamp(
-            decoded_token["exp"]
-        ) - datetime.timedelta(hours=1)
-
-        self._thread_timer = threading.Timer(
-            (exp_time - datetime.datetime.now()).total_seconds(), self._login
-        )
-        self._thread_timer.start()
-
-    def is_logged_in(self):
-        """Check if user is logged in
-
-        Returns:
-            bool: True if logged in, False otherwise
-        """
-        if self.credentials:
-            return True
-        else:
-            return False
-
-    def raise_for_not_logged_in(self):
-        """Raise NotLoggedInError if user is not logged in
-
-        Raises:
-            NotLoggedInError: If user is not logged in
-        """
-        if not self.is_logged_in():
-            raise NotLoggedInError
-
-    def set_authorization_header(self):
-        """Sets the authorization header to a JWT token.
-
-        Gets the JWT token by calling get_token() and prepends 'Bearer '
-        to set the authorization header.
-        """
-        self.headers["authorization"] = "Bearer " + self.get_token()
-
-    def get_token(self):
-        """Get token
-
-        Returns:
-            str: JWT Authorization token
-        """
-        return self.get_credentials()["data"]["user"]["token"]
-
-    def get_credentials(self):
-        """Get credentials
-
-        Returns:
-            dict: Credentials JSON data from login response
-        """
-        return self.credentials
 
     def new_chat(self):
         """Start a new chat synchronously"""
