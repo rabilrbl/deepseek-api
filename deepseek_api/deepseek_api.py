@@ -1,5 +1,6 @@
 import requests
 import aiohttp
+import aiofiles
 import json
 import threading
 import jwt
@@ -157,7 +158,7 @@ class DeepseekAPI:
         """
         self.raise_for_not_logged_in()
         return self.credentials
-    
+        
     def get_token(self):
         """Get token
 
@@ -274,75 +275,102 @@ class AsyncDeepseekAPI:
         self.session = None  # Initialized in the async context manager
 
     async def __aenter__(self):
+        """Initializes an aiohttp ClientSession and logs in.
+
+        This method is called when entering an async context manager.
+        It creates the aiohttp ClientSession used for making requests.
+        It also calls the login() method to authenticate with Deepseek.
+
+        Returns:
+            Self - Returns itself to enable use as an async context manager.
+        """
         self.session = aiohttp.ClientSession()
         await self.login()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        """Closes the aiohttp ClientSession and cancels the scheduled token update.
+
+        This method is called when exiting the async context manager. It closes
+        the aiohttp ClientSession that was used for making requests to the API.
+
+        It also cancels the scheduled token update that was created in
+        __schedule_update_token() to periodically refresh the auth token.
+        """
         await self.session.close()
-        self._scheduled_token_object.cancel()
 
     async def _login(self):
-        """Login method
+        """Logs in the user by sending a POST request to the login API endpoint.
 
-        Raises:
-            EmptyEmailOrPasswordError: If email or password is empty
-
-        Returns:
-            dict: Login JSON response
+        Sends the login request with email, password and other required fields.
+        Saves the credentials to a file if save_login is True.
+        Returns the JSON response from the API.
         """
         if self.email == "" or self.password == "":
             raise EmptyEmailOrPasswordError
 
         json_data = {
-            'email': self.email,
-            'mobile': '',
-            'password': self.password,
-            'area_code': '',
+            "email": self.email,
+            "mobile": "",
+            "password": self.password,
+            "area_code": "",
         }
 
-        async with self.session.post(API_URL.LOGIN, headers=self.headers, json=json_data) as response:
+        async with self.session.post(
+            API_URL.LOGIN, headers=self.headers, json=json_data
+        ) as response:
             self.credentials = await response.json()
             self.headers["authorization"] = "Bearer " + self.get_token()
 
             if self.save_login:
-                with open("login.json", "w") as file:
-                    json.dump(self.credentials, file)
+                async with aiofiles.open("login.json", "w") as file:
+                    await file.write(json.dumps(self.credentials))
+
 
             return await response.json()
         
     async def login(self):
-        """Login method wrapper
+        """Logs the user in by loading credentials from file or calling login API.
+
+        If save_login is True, tries to load credentials from the login.json file.
+        If file not found, calls _login() to login via API.
+
+        If save_login is False, calls _login() to always login via API.
+
+        Schedules an update token callback to refresh the token periodically.
         """
         if self.save_login:
             try:
-                with open("login.json", "r") as file:
-                    self.credentials = json.load(file)
-                    self.headers["authorization"] = "Bearer " + self.get_token()
+                async with aiofiles.open("login.json", "r") as file:
+                    content = await file.read()
+                    self.credentials = json.loads(content)
+
+                    self.set_authorization_header()
             except FileNotFoundError:
                 await self._login()
         else:
             await self._login()
-        # schedule the update token function
-        self.__schedule_update_token()
         
-    def __schedule_update_token(self) -> None:
-        """Schedule the update token function as token expires every 7 days
+    # a method to call self._login if the refresh token is expired
+    async def _refresh_token_if_expired(self):
+        """Refreshes the JWT token if it has expired.
+
+        Decodes the current JWT token to get the expiration time. If the token has
+        expired, calls the _login() method to refresh the token and update the
+        authorization header.
         """
         # Decode the JWT token
         token = self.get_token()
         decoded_token = jwt.decode(token, options={"verify_signature": False})
-        
-        # Fetch the 'exp' value and subtract 1 day
-        exp_time = datetime.datetime.fromtimestamp(decoded_token['exp']) - datetime.timedelta(hours=1)
 
-        # Calculate the time difference in seconds
-        time_diff = (exp_time - datetime.datetime.now()).total_seconds()
+        # Fetch the 'exp' value and subtract 1 hour (to be safe)
+        exp_time = datetime.datetime.fromtimestamp(
+            decoded_token["exp"]
+        ) - datetime.timedelta(hours=1)
 
-        # Schedule the execution
-        thread_timer_obj = threading.Timer(time_diff, self._login)
-        thread_timer_obj.start()
-        self._scheduled_token_object = thread_timer_obj
+        # If the token has expired, refresh it
+        if exp_time < datetime.datetime.now():
+            await self._login()
         
     async def is_logged_in(self):
         """Check if user is logged in
@@ -363,6 +391,14 @@ class AsyncDeepseekAPI:
         """
         if not await self.is_logged_in():
             raise NotLoggedInError
+        
+    def set_authorization_header(self):
+        """Sets the authorization header to a JWT token.
+        
+        Gets the JWT token by calling get_token() and prepends 'Bearer ' 
+        to set the authorization header.
+        """
+        self.headers["authorization"] = "Bearer " + self.get_token()
 
     def get_token(self):
         """Get token
@@ -383,6 +419,9 @@ class AsyncDeepseekAPI:
     async def new_chat(self):
         """Start a new chat asynchronously"""
         
+        # Check if token is expired and refresh it if needed
+        await self._refresh_token_if_expired()
+        
         params = {
             "session_id": "1",
         }
@@ -402,8 +441,20 @@ class AsyncDeepseekAPI:
 
 
     async def chat(self, message: str):
-        """Chat with the deepseek API asynchronously"""
+        """Chat asynchronously with the Deepseek API.
+
+        Sends a chat message to the Deepseek API and yields the response.
+
+        Args:
+            message (str): The chat message to send.
+
+        Yields:
+            dict: The JSON response from the API for each chat message.
+        """
         
+        # Check if token is expired and refresh it if needed
+        await self._refresh_token_if_expired()
+
         json_data = {
             "message": message,
             "stream": True,
@@ -411,7 +462,7 @@ class AsyncDeepseekAPI:
             "model_preference": None,
             "temperature": 0,
         }
-        
+
         async with self.session.post(
             API_URL.CHAT, headers=self.headers, json=json_data
         ) as response:
@@ -423,7 +474,7 @@ class AsyncDeepseekAPI:
                 line = data.decode().strip().replace("data: ", "")
                 if line:
                     line = json.loads(line)
-                    if line.get("payload") is None:
+                    if line.get("payload", None) is None:
                         line["choices"][0]["delta"]["content"] = ""
                     yield line
 
