@@ -1,6 +1,7 @@
 import requests
 import aiohttp
 import aiofiles
+import threading
 import json
 import jwt
 import datetime
@@ -51,6 +52,7 @@ class DeepseekAPI:
 
         self.credentials = {}
         self.session = None  # Initialized in the async context manager
+        self._thread_timer = None # Initialized in the _schedule_update_token method
 
     async def __aenter__(self):
         """Initializes an aiohttp ClientSession and logs in.
@@ -76,6 +78,8 @@ class DeepseekAPI:
         __schedule_update_token() to periodically refresh the auth token.
         """
         await self.session.close()
+        if self._thread_timer:
+            self._thread_timer.cancel()
 
     async def _login(self):
         """Logs in the user by sending a POST request to the login API endpoint.
@@ -128,14 +132,17 @@ class DeepseekAPI:
                 await self._login()
         else:
             await self._login()
+        # Schedule a callback to update the token periodically
+        self._schedule_update_token()
         
-    # a method to call self._login if the refresh token is expired
-    async def _refresh_token_if_expired(self):
-        """Refreshes the JWT token if it has expired.
+    def _schedule_update_token(self):
+        """Schedules a timer to refresh the JWT token before it expires.
 
-        Decodes the current JWT token to get the expiration time. If the token has
-        expired, calls the _login() method to refresh the token and update the
-        authorization header.
+        Decodes the current JWT token to get the 'exp' expiration time.
+        Subtracts 1 hour from the 'exp' time to refresh the token early.
+        Starts a Timer thread to call the _login() method when the expiration
+        time is reached. This will refresh the token and update the authorization
+        header with the new token.
         """
         # Decode the JWT token
         token = self.get_token()
@@ -146,9 +153,10 @@ class DeepseekAPI:
             decoded_token["exp"]
         ) - datetime.timedelta(hours=1)
 
-        # If the token has expired, refresh it
-        if exp_time < datetime.datetime.now():
-            await self._login()
+        self._thread_timer = threading.Timer(
+            (exp_time - datetime.datetime.now()).total_seconds(), self._login
+        )
+        self._thread_timer.start()
         
     async def is_logged_in(self):
         """Check if user is logged in
@@ -197,9 +205,6 @@ class DeepseekAPI:
     async def new_chat(self):
         """Start a new chat asynchronously"""
         
-        # Check if token is expired and refresh it if needed
-        await self._refresh_token_if_expired()
-        
         params = {
             "session_id": "1",
         }
@@ -229,9 +234,6 @@ class DeepseekAPI:
         Yields:
             dict: The JSON response from the API for each chat message.
         """
-        
-        # Check if token is expired and refresh it if needed
-        await self._refresh_token_if_expired()
 
         json_data = {
             "message": message,
@@ -300,6 +302,7 @@ class SyncDeepseekAPI:
         }
 
         self.credentials = {}
+        self._thread_timer = None # Initialized in the _schedule_update_token method
         self.session = requests.Session()
         self.login()
     
@@ -309,6 +312,8 @@ class SyncDeepseekAPI:
         Closes the requests Session that was used for making requests to the API.
         """
         self.session.close()
+        if self._thread_timer:
+            self._thread_timer.cancel()
         
     def _login(self):
         """Logs in the user by sending a POST request to the login API endpoint.
@@ -367,14 +372,17 @@ class SyncDeepseekAPI:
                 self._login()
         else:
             self._login()
-            
-    # a method to call self._login if the refresh token is expired
-    def _refresh_token_if_expired(self):
-        """Refreshes the JWT token if it has expired.
+        # Schedule a callback to update the token periodically
+        self._schedule_update_token()
+        
+    def _schedule_update_token(self):
+        """Schedules a timer to refresh the JWT token before it expires.
 
-        Decodes the current JWT token to get the expiration time. If the token has
-        expired, calls the _login() method to refresh the token and update the
-        authorization header.
+        Decodes the current JWT token to get the 'exp' expiration time.
+        Subtracts 1 hour from the 'exp' time to refresh the token early.
+        Starts a Timer thread to call the _login() method when the expiration
+        time is reached. This will refresh the token and update the authorization
+        header with the new token.
         """
         # Decode the JWT token
         token = self.get_token()
@@ -385,9 +393,11 @@ class SyncDeepseekAPI:
             decoded_token["exp"]
         ) - datetime.timedelta(hours=1)
 
-        # If the token has expired, refresh it
-        if exp_time < datetime.datetime.now():
-            self._login()
+        self._thread_timer = threading.Timer(
+            (exp_time - datetime.datetime.now()).total_seconds(), self._login
+        )
+        self._thread_timer.start()
+        
             
     def is_logged_in(self):
         """Check if user is logged in
@@ -436,9 +446,6 @@ class SyncDeepseekAPI:
     def new_chat(self):
         """Start a new chat synchronously"""
         
-        # Check if token is expired and refresh it if needed
-        self._refresh_token_if_expired()
-        
         params = {
             "session_id": "1",
         }
@@ -467,9 +474,6 @@ class SyncDeepseekAPI:
         Yields:
             dict: The JSON response from the API for each chat message.
         """
-        
-        # Check if token is expired and refresh it if needed
-        self._refresh_token_if_expired()
 
         json_data = {
             "message": message,
