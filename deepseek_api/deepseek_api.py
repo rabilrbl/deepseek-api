@@ -142,6 +142,31 @@ class DeepseekAPI(DeepseekBase):
         if self._thread_timer:
             self._thread_timer.cancel()
 
+    @staticmethod
+    async def create(*args, **kwargs):
+        """Creates a new DeepseekAPI instance and enters the context manager.
+        
+        This static method initializes a new DeepseekAPI instance with the given 
+        arguments and enters the async context manager by calling __aenter__().
+        
+        Args:
+            *args: Positional arguments to pass to DeepseekAPI constructor.
+            **kwargs: Keyword arguments to pass to DeepseekAPI constructor.
+            
+        Returns:
+            DeepseekAPI instance that has entered the context manager.
+        """
+        self = DeepseekAPI(*args, **kwargs)
+        await self.__aenter__()
+        return self
+    
+    async def close(self):
+        """Closes the DeepseekAPI instance by exiting the context manager.
+
+        Calls __aexit__ to close the aiohttp session and cancel the token update.
+        """
+        await self.__aexit__(None, None, None)
+
     async def _login(self):
         """Logs in the user by sending a POST request to the login API endpoint.
 
