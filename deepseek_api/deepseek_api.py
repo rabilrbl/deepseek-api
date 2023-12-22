@@ -5,7 +5,7 @@ import threading
 import json
 import jwt
 import datetime
-from deepseek_api.constants import API_URL
+from deepseek_api.constants import API_URL, DeepseekConstants
 from deepseek_api.errors import EmptyEmailOrPasswordError, NotLoggedInError
 
 class DeepseekBase:
@@ -36,28 +36,10 @@ class DeepseekBase:
         self.password = password
         self.model_class = model_class
         self.save_login = save_login
-        self.headers = {
-            "Accept-Language": "en-IN,en;q=0.9",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "DNT": "1",
-            "Origin": "https://coder.deepseek.com",
-            "Pragma": "no-cache",
-            "Referer": "https://coder.deepseek.com/",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome",
-            "accept": "*/*",
-            "content-type": "application/json",
-            "sec-ch-ua": '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Linux"',
-            "x-app-version": "20231220.2",
-        }
+        self.headers = DeepseekConstants.BASE_HEADERS
         self.credentials = {}
         self._thread_timer = None  # Initialized in the _schedule_update_token method
-        self.session = None  # Initialized in the async context manager
+        self.session = None
 
     def set_authorization_header(self):
         """Sets the authorization header to a JWT token.
