@@ -1,4 +1,5 @@
 import requests
+import aiohttp
 import json
 import threading
 import jwt
@@ -35,7 +36,7 @@ class DeepseekAPI:
             "DNT": "1",
             "Origin": "https://coder.deepseek.com",
             "Pragma": "no-cache",
-            "Referer": "https://coder.deepseek.com/sign_in",
+            "Referer": "https://coder.deepseek.com/",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
@@ -225,3 +226,206 @@ class DeepseekAPI:
                     if line.get("payload", None) is None:  # Hack to fix initial empty payload
                         line["choices"][0]["delta"]["content"] = ""
                     yield line
+                    
+                    
+class AsyncDeepseekAPI:
+    """
+    An asynchronous class to interact with the Deepseek API.
+    """
+
+    def __init__(self, email: str, password: str, model_class: str = "deepseek_code", save_login: bool = False):
+        """
+        Constructor method for DeepseekAPI class.
+
+        Initializes a DeepseekAPI instance with provided credentials and settings.
+
+        Parameters:
+        email (str): User's email for Deepseek account
+        password (str): Password for user's Deepseek account
+        model_class (str): Deepseek model to use, either 'deepseek_chat' or 'deepseek_code'
+        save_login (bool): Whether to save credentials to login.json to avoid re-login
+
+        """
+        self.email = email
+        self.password = password
+        self.model_class = model_class
+        self.save_login = save_login
+        self.headers = {
+            "Accept-Language": "en-IN,en;q=0.9",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "DNT": "1",
+            "Origin": "https://coder.deepseek.com",
+            "Pragma": "no-cache",
+            "Referer": "https://coder.deepseek.com/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome",
+            "accept": "*/*",
+            "content-type": "application/json",
+            "sec-ch-ua": '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Linux"',
+            "x-app-version": "20231220.2",
+        }
+
+        self.credentials = {}
+        self.session = None  # Initialized in the async context manager
+
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        await self.login()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.session.close()
+        self._scheduled_token_object.cancel()
+
+    async def _login(self):
+        """Login method
+
+        Raises:
+            EmptyEmailOrPasswordError: If email or password is empty
+
+        Returns:
+            dict: Login JSON response
+        """
+        if self.email == "" or self.password == "":
+            raise EmptyEmailOrPasswordError
+
+        json_data = {
+            'email': self.email,
+            'mobile': '',
+            'password': self.password,
+            'area_code': '',
+        }
+
+        async with self.session.post(API_URL.LOGIN, headers=self.headers, json=json_data) as response:
+            self.credentials = await response.json()
+            self.headers["authorization"] = "Bearer " + self.get_token()
+
+            if self.save_login:
+                with open("login.json", "w") as file:
+                    json.dump(self.credentials, file)
+
+            return await response.json()
+        
+    async def login(self):
+        """Login method wrapper
+        """
+        if self.save_login:
+            try:
+                with open("login.json", "r") as file:
+                    self.credentials = json.load(file)
+                    self.headers["authorization"] = "Bearer " + self.get_token()
+            except FileNotFoundError:
+                await self._login()
+        else:
+            await self._login()
+        # schedule the update token function
+        self.__schedule_update_token()
+        
+    def __schedule_update_token(self) -> None:
+        """Schedule the update token function as token expires every 7 days
+        """
+        # Decode the JWT token
+        token = self.get_token()
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
+        
+        # Fetch the 'exp' value and subtract 1 day
+        exp_time = datetime.datetime.fromtimestamp(decoded_token['exp']) - datetime.timedelta(hours=1)
+
+        # Calculate the time difference in seconds
+        time_diff = (exp_time - datetime.datetime.now()).total_seconds()
+
+        # Schedule the execution
+        thread_timer_obj = threading.Timer(time_diff, self._login)
+        thread_timer_obj.start()
+        self._scheduled_token_object = thread_timer_obj
+        
+    async def is_logged_in(self):
+        """Check if user is logged in
+
+        Returns:
+            bool: True if logged in, False otherwise
+        """
+        if self.credentials:
+            return True
+        else:
+            return False
+        
+    async def raise_for_not_logged_in(self):
+        """Raise NotLoggedInError if user is not logged in
+
+        Raises:
+            NotLoggedInError: If user is not logged in
+        """
+        if not await self.is_logged_in():
+            raise NotLoggedInError
+
+    def get_token(self):
+        """Get token
+
+        Returns:
+            str: JWT Authorization token
+        """
+        return self.get_credentials()["data"]["user"]["token"]
+    
+    def get_credentials(self):
+        """Get credentials
+
+        Returns:
+            dict: Credentials JSON data from login response
+        """
+        return self.credentials
+
+    async def new_chat(self):
+        """Start a new chat asynchronously"""
+        
+        params = {
+            "session_id": "1",
+        }
+        
+        json_data = {
+            'model_class': self.model_class,
+            'append_welcome_message': False,
+        }
+        
+        async with self.session.post(
+            API_URL.CLEAR_CONTEXT,
+            params=params,
+            headers=self.headers,
+            json=json_data
+        ) as response:
+            return await response.json()
+
+
+    async def chat(self, message: str):
+        """Chat with the deepseek API asynchronously"""
+        
+        json_data = {
+            "message": message,
+            "stream": True,
+            "model_class": self.model_class,
+            "model_preference": None,
+            "temperature": 0,
+        }
+        
+        async with self.session.post(
+            API_URL.CHAT, headers=self.headers, json=json_data
+        ) as response:
+            # Check if the request was successful (status code 200)
+            response.raise_for_status()
+
+            # Iterate over the content asynchronously
+            async for data in response.content:
+                line = data.decode().strip().replace("data: ", "")
+                if line:
+                    line = json.loads(line)
+                    if line.get("payload") is None:
+                        line["choices"][0]["delta"]["content"] = ""
+                    yield line
+
+
+

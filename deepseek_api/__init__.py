@@ -1,2 +1,2 @@
-from .deepseek_api import DeepseekAPI
+from .deepseek_api import DeepseekAPI, AsyncDeepseekAPI
 
