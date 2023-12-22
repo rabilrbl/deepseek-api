@@ -94,6 +94,7 @@ while True:
     message = input("> ")
     
     if message == "exit":
+        app.close() # close app for cleanup
         break
     elif message == "new":
         app.new_chat()
