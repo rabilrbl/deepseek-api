@@ -58,7 +58,7 @@ class DeepseekAPI:
         Returns:
             str: String representation of DeepseekAPI object
         """
-        return f"DeepseekAPI(email={self.email}, password={self.password}, model_class={self.model_class}, save_login={self.save_login})"
+        return f"DeepseekAPI(email={self.email}, model_class={self.model_class}, save_login={self.save_login})"
     
     def __del__(self):
         """Destructor method
