@@ -13,7 +13,7 @@ def main():
         email=email,
         password=password,
         save_login=True,  # save login credentials to login.json
-        model_class="deepseek_code",  # Choose from "deepseek_code" or "deepseek_code"
+        model_class="deepseek_code",  # Choose from "deepseek_chat" or "deepseek_code"
     )
 
     print(
