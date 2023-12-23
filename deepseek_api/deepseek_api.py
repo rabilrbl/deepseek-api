@@ -5,11 +5,12 @@ import threading
 import json
 import jwt
 import datetime
+from abc import ABC, abstractmethod
 from deepseek_api.constants import API_URL, DeepseekConstants
 from deepseek_api.errors import EmptyEmailOrPasswordError, NotLoggedInError
 
 
-class DeepseekBase:
+class DeepseekBase(ABC):
     """
     A base class to create DeepseekAPI instances.
     """
@@ -108,6 +109,61 @@ class DeepseekBase:
         """
         if not self.is_logged_in():
             raise NotLoggedInError
+        
+    @abstractmethod
+    def login(self):
+        """Logs the user in by loading credentials from file or calling login API.
+
+        If save_login is True, tries to load credentials from the login.json file.
+        If file not found, calls _login() to login via API.
+
+        If save_login is False, calls _login() to always login via API.
+
+        Schedules an update token callback to refresh the token periodically.
+        """
+        pass
+    
+    @abstractmethod
+    def close(self):
+        """Call destructor method"""
+        pass
+    
+    @abstractmethod
+    def new_chat(self):
+        """Start a new chat"""
+        pass
+    
+    @abstractmethod
+    def chat(self, message: str):
+        """Chat with the Deepseek API.
+
+        Sends a chat message to the Deepseek API and yields the response.
+
+        Args:
+            message (str): The chat message to send.
+
+        Yields:
+            dict: The JSON response from the API for each chat message.
+        """
+        pass
+    
+    @abstractmethod
+    def _login(self):
+        """Logs in the user by sending a POST request to the login API endpoint.
+
+        Sends the login request with email, password and other required fields.
+        Saves the credentials to a file if save_login is True.
+        Returns the JSON response from the API.
+
+        Raises:
+            EmptyEmailOrPasswordError: If the email or password is not provided.
+            HTTP Error: If the login request fails.
+
+        Returns:
+            dict: Credentials JSON data from login response
+        """
+        pass
+
 
 
 class DeepseekAPI(DeepseekBase):
@@ -168,12 +224,6 @@ class DeepseekAPI(DeepseekBase):
         await self.__aexit__(None, None, None)
 
     async def _login(self):
-        """Logs in the user by sending a POST request to the login API endpoint.
-
-        Sends the login request with email, password and other required fields.
-        Saves the credentials to a file if save_login is True.
-        Returns the JSON response from the API.
-        """
         if self.email == "" or self.password == "":
             raise EmptyEmailOrPasswordError
 
