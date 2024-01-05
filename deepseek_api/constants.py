@@ -27,5 +27,5 @@ class DeepseekConstants:
         "sec-ch-ua": '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Linux"',
-        "x-app-version": "20231220.2",
+        "x-app-version": "20240105.0",
     }
